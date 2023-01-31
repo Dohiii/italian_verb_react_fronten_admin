@@ -1,18 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import FlashMessages from './FlashMessages'
 import Osoba from './Osoba'
 import OsobaSection from './OsobaSection'
 import Page from './Page'
-import LoadingDotsIcon from "./LoadingDotsicon"
 
 
-function AddVerb() {
-  const [isLoading, setIsLoading] = useState(true)
-  const [verbs, setVerbs] = useState([])
+function AddVerb(props) {
 
+  const [verbId, setVerbId] = useState("")
   const [czasownik, setCzasownik] = useState("")
   const [tlumaczenie, setTlumaczenie] = useState("")
   const [zwrotny, setZwrotny] = useState(false)
+
+  const navigate = useNavigate()
 
 
   // Refs sections
@@ -21,8 +22,6 @@ function AddVerb() {
   const sectionCongiuntivo = useRef(null)
   const sectionCondizionale = useRef(null)
   const sectionImperativo = useRef(null)
-
-
 
   // Ref osoby
   const presenteIndecativo = useRef(null)
@@ -48,6 +47,10 @@ function AddVerb() {
   const zwrotnyRef = useRef(null)
 
 
+  const objectWithOnlyId = {
+    "id": ""
+  }
+
 
   const dataToPost = {
     "czasownik": czasownik,
@@ -65,7 +68,6 @@ function AddVerb() {
 
   // get and populate form on start
   useEffect(() => {
-
     async function fetchPosts() {
       try {
         const response = await fetch(
@@ -77,9 +79,15 @@ function AddVerb() {
           }
         })
         const verb = await response.json()
-        console.log(verb)
-        setIsLoading(false)
-        populateForm(verb)
+
+        if (verb) {
+          await populateForm(verb)
+          setCzasownik(verb.czasownik)
+          setTlumaczenie(verb.tlumaczenie)
+          setZwrotny(verb.zwrotne)
+          setVerbId(verb._id)
+        }
+
       } catch (e) {
         console.log(e)
       }
@@ -123,12 +131,10 @@ function AddVerb() {
   }
 
   const populateForm = async (data) => {
-
-
-    const sectionIndicativoArr = await Array.from(sectionIndicativo.current.children)
-    const sectionCongiuntivoArr = await Array.from(sectionCongiuntivo.current.children)
-    const sectionCondizionaleArr = await Array.from(sectionCondizionale.current.children)
-    const sectionImperativoArr = await Array.from(sectionImperativo.current.children)
+    const sectionIndicativoArr = Array.from(sectionIndicativo.current.children)
+    const sectionCongiuntivoArr = Array.from(sectionCongiuntivo.current.children)
+    const sectionCondizionaleArr = Array.from(sectionCondizionale.current.children)
+    const sectionImperativoArr = Array.from(sectionImperativo.current.children)
 
 
     sectionIndicativoArr.shift()
@@ -144,9 +150,6 @@ function AddVerb() {
     chasownikRef.current.value = data.czasownik
     tlumaczenieRef.current.value = data.tlumaczenie
     zwrotnyRef.current.value = data.zwrotny
-
-
-
   }
 
 
@@ -435,16 +438,23 @@ function AddVerb() {
     loopAndAddOsobaToObject(sectionCongiuntivoArr)
     loopAndAddOsobaToObject(sectionCondizionaleArr)
     loopAndAddOsobaToObject(sectionImperativoArr)
+
+
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
-    await formObject()
+    formObject()
 
     try {
+
+      console.log(dataToPost)
+      const url = `https://italian-verbs.onrender.com/api/v1/admin/${verbId}`
+
+      console.log(url)
       const response = await fetch(
-        "https://italian-verbs.onrender.com/api/v1/admin", {
-        method: 'POST', // *GET, POST, PUT, DELETE, etc.
+        url, {
+        method: 'PATCH', // *GET, POST, PUT, DELETE, etc.
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem("verbAppToken")}`
@@ -452,12 +462,8 @@ function AddVerb() {
         body: JSON.stringify(dataToPost)
       })
 
-      console.log(response)
-
-
-      if (response.status === 401) {
-        alert("You need to be logged in to post verb")
-      }
+      navigate("/search")
+      props.addFlashMessage("Congrats you updated the post")
 
     } catch (e) {
       console.log(e)
@@ -467,7 +473,6 @@ function AddVerb() {
 
 
 
-  if (isLoading) return <LoadingDotsIcon />
 
   return (
     <Page title="Add Verb">
